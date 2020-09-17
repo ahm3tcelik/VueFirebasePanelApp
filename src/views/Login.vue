@@ -60,7 +60,6 @@ export default {
   methods: {
     validate() {
       if(this.$refs.form.validate()) {
-        console.log(this.email + ' , ' + this.password);
         this.disabled = true;
 
         firebase

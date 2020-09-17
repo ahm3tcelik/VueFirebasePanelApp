@@ -1,6 +1,6 @@
 <template>
   <div>
-    <v-data-table :headers="headers" :items="categori"  :search="search" class="elevation-1" 
+    <v-data-table :headers="headers" :items="categories"  :search="search" class="elevation-1" 
   :loading="loading" loading-text="Loading... Please wait">
     <template v-slot:top>
 
@@ -97,7 +97,7 @@
 </template>
 
 <script>
-import { firestore, storage } from 'firebase';
+import { storage } from 'firebase';
 import { mapActions, mapGetters } from 'vuex'
 
 export default {
@@ -119,7 +119,6 @@ export default {
         { text: "Category Image URL", value: "image" },
         { text: "Actions", value: "actions", sortable: true },
       ],
-      categories: [],
       editedIndex: -1,
       editedItem: {
         title: "",
@@ -139,10 +138,10 @@ export default {
   },
   computed: {
     ...mapActions({
-        loadCategories: 'categories/loadCategories'
+        loadCategories: 'categories/loadCategories',
     }),
     ...mapGetters({
-        categori: 'categories/getCategories'
+        categories: 'categories/getCategories'
     }),
     formTitle() {
       return this.editedIndex === -1 ? "New Category" : "Edit Category";
@@ -160,25 +159,19 @@ export default {
   },
 
   methods: {
+    ...mapActions({
+      addCategory: 'categories/addCategory',
+      updateCategory: 'categories/updateCategory',
+      removeCategory: 'categories/removeCategory'
+    }),
     async initialize() {
         this.loading = true;
-        await this.loadCategories;
+        try {
+          await this.loadCategories;
+        } catch (e) {
+          console.error(e);
+        }
         this.loading = false;
-      /*
-      this.loading = true;
-      firestore()
-        .collection("Categories")
-        .get()
-        .then((querySnapshot) => {
-          this.categories = querySnapshot.docs.map(function (doc) {
-            let category = doc.data();
-            category["id"] = doc.id;
-            return category;
-          });
-          //this.categories = querySnapshot.docs.map(doc => doc.data())
-          this.loading = false;
-        });
-        */
     },
     selectFile() {
       let file = this.$refs.uploader.files[0];
@@ -191,19 +184,19 @@ export default {
         ref.put(file).then((snapshot) => {
           this.loading = false;
           if (snapshot.state == "success") {
-            console.log("Uploaded a blob or file!");
-            console.log(snapshot);
             snapshot.ref.getDownloadURL().then(function (downloadURL) {
-              console.log("File available at", downloadURL);
               vm.editedItem.image = downloadURL;
             });
           } else {
-            alert("Failed");
+            this.snack = true
+            this.snackColor = 'error'
+            this.snackText = 'File could not be uploaded'; 
           }
           file = null;
         });
-      } else {
-        console.log("yok");
+      } 
+      else {
+        //resim seçilmedi
       }
     },
     editItem(item) {
@@ -212,30 +205,27 @@ export default {
       this.dialog = true;
     },
 
-    deleteItem(item) {
+    async deleteItem(item) {
       this.loading = true;
-      const index = this.categories.indexOf(item);
-      let vm = this;
       if (confirm("Are you sure you want to delete this item?")) {
-        firestore()
-          .collection("Categories")
-          .doc(item.id)
-          .delete()
-          .then(() => {
-            this.loading = false;
-            vm.categories.splice(index, 1);
+        this.loading = true;
+        try {
+          await this.removeCategory(item);
+          this.loading = false;
 
-            vm.snack = true
-            vm.snackColor = 'success'
-            vm.snackText = 'Category deleted'
-          })
-          .catch((error) => {
-            this.loading = false;
-            
-            vm.snack = true
-            vm.snackColor = 'error'
-            vm.snackText = error;
-          });
+          this.snack = true;
+          this.snackColor = 'success';
+          this.snackText = 'Category has been deleted';
+
+        } catch (e) {
+          this.loading = false;
+
+          this.snack = true
+          this.snackColor = 'error'
+          this.snackText = 'Category could not be deleted'
+
+          console.error(e);
+        }
       } else {
         this.loading = false;
       }
@@ -249,60 +239,52 @@ export default {
       });
     },
 
-    save() {
+    async save() {
       if(!this.$refs.dialogForm.validate()) return;
-      let vm = this;
+      
       if (this.editedIndex > -1) {
-        //update data from firestore
-
         this.loading = true;
-        firestore()
-          .collection('Categories')
-          .doc(vm.editedItem.id)
-          .set(vm.editedItem)
-          .then(() => {
-            this.loading = false;
-            Object.assign(vm.categories[vm.editedIndex], vm.editedItem);
+        try {
+          await this.updateCategory({index: this.editedIndex, category: this.editedItem});
+          this.loading = false;
+          this.close();
 
-            vm.snack = true
-            vm.snackColor = 'success'
-            vm.snackText = 'Category updated'
+          this.snack = true
+          this.snackColor = 'success'
+          this.snackText = 'Category has been updated'
 
-            vm.close();
-          })
-          .catch(() => {
-            this.loading = false;
-            vm.close();
-          });
-      } else {
+        } catch (e) {
+          this.loading = false;
+          this.close();
 
-        // create data from firestore
+          this.snack = true
+          this.snackColor = 'error'
+          this.snackText = 'Category could not be updated'
 
+          console.error(e);  
+        }
+      } 
+      else {
         this.loading = true;
-        const vm = this;
-        firestore()
-          .collection('Categories')
-          .add(vm.editedItem)
-          .then((docRef) => {
-            this.loading = false;
-            vm.editedItem.id = docRef.id;
-            console.log(vm.editedItem.id);
-            console.log(vm.editedItem);
-            console.log(vm.categories);
-            vm.categories.push(vm.editedItem);
-            vm.snack = true
-            vm.snackColor = 'success'
-            vm.snackText = 'Category added'
-            vm.close();
-          })
-          .catch((error) => {
-            this.loading = false;
-            this.snack = true
-            this.snackColor = 'error'
-            this.snackText = error; 
+        try {
+          await this.addCategory(this.editedItem);
+          this.loading = false;
+          this.close();
 
-            vm.close();
-          });
+          this.snack = true
+          this.snackColor = 'success'
+          this.snackText = 'Category added'
+
+        } catch (e) {
+          this.loading = false;
+          this.close();
+
+          this.snack = true
+          this.snackColor = 'error'
+          this.snackText = 'Category could not be created'
+
+          console.error(e);
+        }
       }
     },
   },
