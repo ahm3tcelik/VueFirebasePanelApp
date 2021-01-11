@@ -48,6 +48,7 @@
 
 <script>
 import firebase from 'firebase';
+import { mapActions } from 'vuex';
 
 export default {
   data: () => ({
@@ -56,11 +57,20 @@ export default {
     drawer: null,
     menus: [
       { path: '', title: 'Dashboard', icon: 'mdi-view-dashboard' },
+      { path: '/sounds', title: 'Sounds', icon: 'mdi-playlist-music'},
       { path: '/categories', title: 'Categories', icon: 'mdi-folder-multiple' },
     ]
   }),
   created() {
     this.dark = this.$vuetify.theme.dark
+    this.loadSounds;
+    this.loadCategories;
+  },
+  computed: {
+    ...mapActions({
+        loadSounds: 'sounds/loadSounds',
+        loadCategories: 'categories/loadCategories',
+    }),
   },
   methods: {
     logOut() {
@@ -72,7 +82,7 @@ export default {
         });
     },
     goto(newPath) {
-      this.$router.push({path: this.path + newPath});
+      this.$router.push({path: this.path + newPath}).catch(()=>{});
     }
   },
   watch: {

@@ -1,17 +1,17 @@
 <template>
   <div>
-    <v-data-table :headers="headers" :items="categories"  :search="search" class="elevation-1" 
+    <v-data-table :headers="headers" :items="sounds"  :search="search" class="elevation-1" 
   :loading="loading" loading-text="Loading... Please wait">
     <template v-slot:top>
 
       <v-toolbar flat>
-        <v-toolbar-title>Categories</v-toolbar-title>
+        <v-toolbar-title>Sounds</v-toolbar-title>
         <v-divider class="mx-4" inset vertical /> 
         <v-spacer />
 
         <v-dialog v-model="dialog" max-width="500px">
           <template v-slot:activator="{ on, attrs }">
-            <v-btn color="primary" dark class="mb-2" v-bind="attrs" v-on="on" >New Category</v-btn>
+            <v-btn color="primary" dark class="mb-2" v-bind="attrs" v-on="on" >New Sound</v-btn>
           </template>
           <v-card>
 
@@ -24,13 +24,19 @@
                 <v-form v-bind:disabled="loading" lazy-validation ref="dialogForm">
                   <v-row>
                   <v-col cols="12" sm="6" md="6">
-                    <v-text-field :disabled="loading" :rules="titleRule" v-model="editedItem.title" label="Category Name"></v-text-field>
+                    <v-text-field :disabled="loading" :rules="titleRule" v-model="editedItem.title" label="Sound Name"></v-text-field>
                   </v-col>
                   <v-col cols="12" sm="6" md="6">
-                    <input type="file" class="d-none" ref="uploader" accept="image/*" @change="selectFile()">
-                    <v-text-field :rules="imageRule" :disabled="loading" v-model="editedItem.image" label="Category Image Url" prepend-icon="mdi-image" @click:prepend="$refs.uploader.click()">
+                    <input type="file" class="d-none" ref="uploader" accept=".mp3" @change="selectFile()">
+                    <v-text-field :rules="soundRule" :disabled="loading" v-model="editedItem.sound" label="Sound Url" prepend-icon="mdi-music-box" @click:prepend="$refs.uploader.click()">
                     </v-text-field>
                   </v-col>
+
+                  <v-col cols="12" sm="12" md="12">                    
+                    <v-select :items="categories" :rules="categoryRule" v-model="editedItem.category_id" name="category" 
+                    item-text="title" item-value="id" label="Select a category" solo ></v-select>
+                  </v-col>
+
                 </v-row>
                 </v-form>
               </v-container>
@@ -51,12 +57,17 @@
       </v-toolbar>
     </template>
 
-    <template v-slot:[`item.image`]="{ value }">
+    <template v-slot:[`item.sound`]="{ value }">
       <a :href="value" target="_blank">
         {{ value | truncate(20, '...') }}
         <span class="mdi mdi-open-in-new"></span>
       </a>
     </template>
+
+    <template v-slot:[`item.category_id`]="{ value }">
+      {{ getCategoryById(value).title }}
+    </template>
+
 
     <template v-slot:[`body.prepend`]="{ headers }">
         <tr class="mx-0 px-0">
@@ -77,8 +88,7 @@
       <v-icon
         small
         @click="deleteItem(item)"
-        color="error"
-      >
+        color="error">
         mdi-delete
       </v-icon>
     </template>
@@ -112,40 +122,46 @@ export default {
       dialog: false,
       headers: [
         {
-          text: "Category Name",
-          align: "start",
+          text: 'Sound Name',
+          align: 'start',
           sortable: true,
           value: "title",
         },
-        { text: "Category Image URL", value: "image" },
+        { text: 'Sound URL', value: 'sound' },
+        { text: 'Category Name', value: 'category_id' },
         { text: "Actions", value: "actions", sortable: false },
       ],
       editedIndex: -1,
       editedItem: {
         title: "",
-        image: "",
+        sound: "",
       },
       defaultItem: {
         title: "",
-        image: "",
+        sound: "",
       },
       titleRule: [
-        v => !!v || 'Category name is required',
+        v => !!v || 'Sound name is required',
       ],
-      imageRule: [
-        v => /^(?:(?:https?|ftp):\/\/)?(?:(?!(?:10|127)(?:\.\d{1,3}){3})(?!(?:169\.254|192\.168)(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)(?:\.(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)*(?:\.(?:[a-z\u00a1-\uffff]{2,})))(?::\d{2,5})?(?:\/\S*)?$/.test(v) || 'Image link must be valid',
+      soundRule: [
+        v => /^(?:(?:https?|ftp):\/\/)?(?:(?!(?:10|127)(?:\.\d{1,3}){3})(?!(?:169\.254|192\.168)(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)(?:\.(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)*(?:\.(?:[a-z\u00a1-\uffff]{2,})))(?::\d{2,5})?(?:\/\S*)?$/.test(v) || 'Sound link must be valid',
+      ],
+      categoryRule: [
+        v => !!v || 'Category is required'
       ]
     };
   },
   computed: {
     ...mapActions({
+        loadSounds: 'sounds/loadSounds',
         loadCategories: 'categories/loadCategories',
     }),
     ...mapGetters({
+        sounds: 'sounds/getSounds',
         categories: 'categories/getCategories'
     }),
     formTitle() {
-      return this.editedIndex === -1 ? "New Category" : "Edit Category";
+      return this.editedIndex === -1 ? "New Sound" : "Edit Sound";
     },
   },
 
@@ -157,17 +173,26 @@ export default {
 
   created() {
     this.initialize();
-  },
 
+  },
   methods: {
     ...mapActions({
-      addCategory: 'categories/addCategory',
-      updateCategory: 'categories/updateCategory',
-      removeCategory: 'categories/removeCategory'
+      addSound: 'sounds/addSound',
+      updateSound: 'sounds/updateSound',
+      removeSound: 'sounds/removeSound'
     }),
+    getCategoryById: function(id) {
+      let category = this.categories.filter(c => c.id == id)[0];
+      if(category === undefined) {
+        console.log('undefined qarşim');
+        return {title: 'Unknown'};
+      }
+      return category;
+    },
     async initialize() {
         this.loading = true;
         try {
+          await this.loadSounds;
           await this.loadCategories;
         } catch (e) {
           console.error(e);
@@ -180,13 +205,13 @@ export default {
         this.loading = true;
         let ref = storage()
           .ref()
-          .child("category_images/" + file.name);
+          .child("sounds/" + file.name);
         let vm = this;
         ref.put(file).then((snapshot) => {
           this.loading = false;
           if (snapshot.state == "success") {
             snapshot.ref.getDownloadURL().then(function (downloadURL) {
-              vm.editedItem.image = downloadURL;
+              vm.editedItem.sound = downloadURL;
             });
           } else {
             this.snack = true
@@ -197,11 +222,11 @@ export default {
         });
       } 
       else {
-        //resim seçilmedi
+        //müzik seçilmedi
       }
     },
     editItem(item) {
-      this.editedIndex = this.categories.indexOf(item);
+      this.editedIndex = this.sounds.indexOf(item);
       this.editedItem = Object.assign({}, item);
       this.dialog = true;
     },
@@ -211,20 +236,20 @@ export default {
       if (confirm("Are you sure you want to delete this item?")) {
         this.loading = true;
         try {
-          await this.removeCategory(item);
-          storage().refFromURL(item.image).delete();
+          await this.removeSound(item);
+          storage().refFromURL(item.sound).delete();
           this.loading = false;
 
           this.snack = true;
           this.snackColor = 'success';
-          this.snackText = 'Category has been deleted';
+          this.snackText = 'Sound has been deleted';
 
         } catch (e) {
           this.loading = false;
 
           this.snack = true
           this.snackColor = 'error'
-          this.snackText = 'Category could not be deleted'
+          this.snackText = 'Sound could not be deleted'
 
           console.error(e);
         }
@@ -247,13 +272,13 @@ export default {
       if (this.editedIndex > -1) {
         this.loading = true;
         try {
-          await this.updateCategory({index: this.editedIndex, category: this.editedItem});
+          await this.updateSound({index: this.editedIndex, sound: this.editedItem});
           this.loading = false;
           this.close();
 
           this.snack = true
           this.snackColor = 'success'
-          this.snackText = 'Category has been updated'
+          this.snackText = 'Sound has been updated'
 
         } catch (e) {
           this.loading = false;
@@ -261,7 +286,7 @@ export default {
 
           this.snack = true
           this.snackColor = 'error'
-          this.snackText = 'Category could not be updated'
+          this.snackText = 'Sound could not be updated'
 
           console.error(e);  
         }
@@ -269,13 +294,13 @@ export default {
       else {
         this.loading = true;
         try {
-          await this.addCategory(this.editedItem);
+          await this.addSound(this.editedItem);
           this.loading = false;
           this.close();
 
           this.snack = true
           this.snackColor = 'success'
-          this.snackText = 'Category added'
+          this.snackText = 'Sound has been added'
 
         } catch (e) {
           this.loading = false;
@@ -283,7 +308,7 @@ export default {
 
           this.snack = true
           this.snackColor = 'error'
-          this.snackText = 'Category could not be created'
+          this.snackText = 'Sound could not be created'
 
           console.error(e);
         }
